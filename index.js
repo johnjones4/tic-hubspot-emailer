@@ -31,50 +31,61 @@ function setupTemplate(next) {
 }
 
 function gatherParticipants(done) {
-  var participants = [];
-  var doRequest = function(lastVid) {
-    const params = {
-      'hapikey': config.hubspotKey,
-      'property': [
-        'Published',
-        'FirstName',
-        'LastName',
-        'Email'
-      ],
-      'count': 100,
-      'vidOffset': lastVid
-    }
-    request({
-      'uri': 'https://api.hubapi.com/contacts/v1/lists/all/contacts/all',
-      'qs': params,
-      'useQuerystring': true,
-      'json': true
-    },function(err,res,body) {
-      if (err) {
-        done(err);
-      } else if (body.contacts && body.contacts.length > 0) {
-        participants = participants.concat(
-          body.contacts
-            .filter(function(contact) {
-              return contact.properties.published && (contact.properties.published.value+'').trim().length > 0;
-            })
-            .map(function(contact) {
-              return contact.properties;
-            })
-        );
-        doRequest(body.contacts[body.contacts.length - 1].vid);
-      } else {
-        done(null,participants);
+  if (config.dryRun.participants) {
+    done(null,[
+      {
+        'firstname': {'value':'John'},
+        'lastname': {'value':'Jones'},
+        'email': {'value':'johnjones4@gmail.com'},
       }
-    });
+    ]);
+  } else {
+    var participants = [];
+    var doRequest = function(lastVid) {
+      const params = {
+        'hapikey': config.hubspotKey,
+        'property': [
+          'Published',
+          'FirstName',
+          'LastName',
+          'Email'
+        ],
+        'count': 100,
+        'vidOffset': lastVid
+      }
+      request({
+        'uri': 'https://api.hubapi.com/contacts/v1/lists/all/contacts/all',
+        'qs': params,
+        'useQuerystring': true,
+        'json': true
+      },function(err,res,body) {
+        if (err) {
+          done(err);
+        } else if (body.contacts && body.contacts.length > 0) {
+          participants = participants.concat(
+            body.contacts
+              .filter(function(contact) {
+                return contact.properties.published && (contact.properties.published.value+'').trim().length > 0;
+              })
+              .map(function(contact) {
+                return contact.properties;
+              })
+          );
+          doRequest(body.contacts[body.contacts.length - 1].vid);
+        } else {
+          done(null,participants);
+        }
+      });
+    }
+    doRequest(null);
   }
-  doRequest(null);
 }
 
 function sendEmails(people,template,done) {
   async.series(
     people.map(function(person) {
       return function(next) {
+        console.log(person.email.value);
         const templateVariables = {
           'person': person,
           'links': config.links
