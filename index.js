@@ -48,7 +48,8 @@ function gatherParticipants(done) {
           'Published',
           'FirstName',
           'LastName',
-          'Email'
+          'Email',
+          'no_contact'
         ],
         'count': 100,
         'vidOffset': lastVid
@@ -65,7 +66,7 @@ function gatherParticipants(done) {
           participants = participants.concat(
             body.contacts
               .filter(function(contact) {
-                return contact.properties.published && (contact.properties.published.value+'').trim().length > 0;
+                return contact.properties.published && (contact.properties.published.value+'').trim().length > 0 && (!contact.properties.no_contact || !contact.properties.no_contact.value);
               })
               .map(function(contact) {
                 return contact.properties;
@@ -100,7 +101,7 @@ function sendEmails(people,template,done) {
         };
         if (config.dryRun.send) {
           console.log('======================================================');
-          console.log(mailData);
+          // console.log(mailData);
           next();
         } else {
           transporter.sendMail(mailData,function(err,info) {
